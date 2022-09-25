@@ -137,6 +137,7 @@ func _scan():
 		var percent = snapped((float(size) / float(total_bytes)) * 100, 0.1)
 		var item = list.get_node(str(id))
 		
+		if not is_instance_valid(item): continue
 		if percent >= 0.1 or expand_other:
 			list.move_child(item, order)
 			

@@ -3,8 +3,8 @@ extends EditorPlugin
 
 var file: File
 
-@onready var base_theme = get_editor_interface().get_base_control().theme
-@onready var window_asset = preload("res://addons/gprojsize/SizeMapWindow.tscn")
+@onready var base_theme: Theme = get_editor_interface().get_base_control().theme
+@onready var window_asset: PackedScene = preload("res://addons/gprojsize/SizeMapWindow.tscn")
 var current_window: AcceptDialog
 
 var total_bytes: int = 0
@@ -12,7 +12,7 @@ var total_other: int = 0
 var file_sizes: Dictionary = {}
 var filesize_order: Array = []
 
-var expand_other = false
+var expand_other: bool = false
 
 var byte_quantities: Array[float] = [1000.0, 1000000.0, 1000000000.0]
 

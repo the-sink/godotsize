@@ -10,10 +10,10 @@ config_version=5
 
 [application]
 
-config/name="gprojsize"
+config/name="godotsize"
 config/features=PackedStringArray("4.0", "Vulkan Clustered")
 config/icon="res://icon.svg"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/gprojsize/plugin.cfg")
+enabled=PackedStringArray("res://addons/godotsize/plugin.cfg")

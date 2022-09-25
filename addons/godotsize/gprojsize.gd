@@ -4,7 +4,7 @@ extends EditorPlugin
 var file: File
 
 @onready var base_theme: Theme = get_editor_interface().get_base_control().theme
-@onready var window_asset: PackedScene = preload("res://addons/gprojsize/SizeMapWindow.tscn")
+@onready var window_asset: PackedScene = preload("res://addons/godotsize/SizeMapWindow.tscn")
 var current_window: AcceptDialog
 
 var total_bytes: int = 0

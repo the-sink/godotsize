@@ -26,6 +26,10 @@ size = Vector2i(500, 400)
 visible = true
 min_size = Vector2i(300, 300)
 
+[node name="DelayTimer" type="Timer" parent="."]
+wait_time = 0.2
+one_shot = true
+
 [node name="Background" type="ColorRect" parent="."]
 offset_left = 8.0
 offset_top = 8.0

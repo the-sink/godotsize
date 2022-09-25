@@ -7,13 +7,15 @@ var file: File
 @onready var window_asset: PackedScene = preload("res://addons/godotsize/SizeMapWindow.tscn")
 var current_window: AcceptDialog
 
+var rescan_button: Button
+var list: VBoxContainer
+var delay_timer: Timer
+
 var total_bytes: int = 0
 var total_other: int = 0
 var file_sizes: Dictionary = {}
 var filesize_order: Array = []
-
 var expand_other: bool = false
-
 var byte_quantities: Array[float] = [1000.0, 1000000.0, 1000000000.0]
 
 func _enter_tree() -> void:
@@ -40,7 +42,11 @@ func _opened() -> void:
 		current_window.cancelled.connect(_close_requested)
 		current_window.confirmed.connect(_close_requested)
 		
-		current_window.get_node("Background/Main/HBoxContainer/RescanButton").pressed.connect(_scan)
+		rescan_button = current_window.get_node("Background/Main/HBoxContainer/RescanButton")
+		rescan_button.pressed.connect(_scan)
+		
+		list = current_window.get_node("Background/Main/ScrollContainer/List")
+		delay_timer = current_window.get_node("DelayTimer")
 		
 		_scan()
 	else:
@@ -100,7 +106,6 @@ func _scan_directory(path: String) -> void:
 				if not added:
 					filesize_order.append(node_friendly_name)
 							
-				var list = current_window.get_node("Background/Main/ScrollContainer/List")
 				var list_item = list.get_node("Item").duplicate()
 				var file_name_label = list_item.get_node("Label/FileName")
 				var file_size_label = list_item.get_node("Label/FileSize")
@@ -112,7 +117,9 @@ func _scan_directory(path: String) -> void:
 		file_name = dir.get_next()
 
 func _scan():
-	current_window.get_node("Background/Main/HBoxContainer/RescanButton").disabled = true
+	if not is_instance_valid(current_window): return
+	
+	rescan_button.disabled = true
 
 	total_bytes = 0
 	total_other = 0
@@ -122,11 +129,15 @@ func _scan():
 	expand_other = current_window.get_node("Background/Main/HBoxContainer/ExpandOther").is_pressed()
 
 	var folder_path = ProjectSettings.globalize_path("res://")
-	var list = current_window.get_node("Background/Main/ScrollContainer/List")
-	
+
 	for item in list.get_children():
 		if item.visible:
-			item.free()
+			item.queue_free()
+	
+	# artificial delay added to make it obvious something is happening on small projects
+	# (also because queue_free() may not be carried out by the time new list items are added, causing issues
+	delay_timer.start()
+	await delay_timer.timeout
 	
 	file = File.new()
 	_scan_directory(folder_path)
@@ -176,5 +187,4 @@ func _scan():
 		other_item.modulate = Color(1, 1, 1, 0.25)
 		other_item.visible = true
 	
-
-	current_window.get_node("Background/Main/HBoxContainer/RescanButton").disabled = false
+	rescan_button.disabled = false

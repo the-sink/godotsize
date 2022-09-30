@@ -1,4 +1,9 @@
-[gd_scene load_steps=4 format=3 uid="uid://cbkdorc6w0dln"]
+[gd_scene load_steps=7 format=3 uid="uid://cbkdorc6w0dln"]
+
+[ext_resource type="Texture2D" uid="uid://c3neulsswfssf" path="res://addons/godotsize/Icons/cog.png" id="1_4mbh3"]
+[ext_resource type="Texture2D" uid="uid://djjln8qyewx7n" path="res://addons/godotsize/Icons/reload.png" id="2_3ckyf"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_l2i63"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_1vy2d"]
 
@@ -22,7 +27,7 @@ corner_detail = 4
 disable_3d = true
 title = "Size Map"
 position = Vector2i(200, 200)
-size = Vector2i(500, 400)
+size = Vector2i(550, 450)
 visible = true
 min_size = Vector2i(300, 300)
 
@@ -33,8 +38,8 @@ one_shot = true
 [node name="Background" type="ColorRect" parent="."]
 offset_left = 8.0
 offset_top = 8.0
-offset_right = 492.0
-offset_bottom = 351.0
+offset_right = 542.0
+offset_bottom = 401.0
 grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.113725, 0.133333, 0.160784, 1)
@@ -53,95 +58,118 @@ grow_vertical = 2
 
 [node name="HBoxContainer" type="HBoxContainer" parent="Background/Main"]
 layout_mode = 2
-offset_right = 460.0
+offset_right = 510.0
 offset_bottom = 31.0
 
-[node name="ExpandOther" type="CheckBox" parent="Background/Main/HBoxContainer"]
+[node name="OptionsButton" type="Button" parent="Background/Main/HBoxContainer"]
 layout_mode = 2
-offset_right = 393.0
+offset_right = 90.0
+offset_bottom = 31.0
+text = "Options"
+icon = ExtResource("1_4mbh3")
+
+[node name="ModeNote" type="Label" parent="Background/Main/HBoxContainer"]
+visible = false
+modulate = Color(1, 1, 1, 0.392157)
+layout_mode = 2
+offset_left = 94.0
+offset_right = 263.0
+offset_bottom = 31.0
+size_flags_vertical = 1
+tooltip_text = "When this mode is enabled, import data will be scanned instead of the actual files in the project folder. Not all files will show!"
+mouse_filter = 0
+theme_override_font_sizes/font_size = 12
+text = " * Import data mode enabled"
+vertical_alignment = 1
+
+[node name="VSeparator" type="VSeparator" parent="Background/Main/HBoxContainer"]
+layout_mode = 2
+offset_left = 94.0
+offset_right = 423.0
 offset_bottom = 31.0
 size_flags_horizontal = 3
-tooltip_text = "All files that make up less than 0.1% of the total project size are hidden by default and merged into an \"Other\" category. You can show those files by checking this box, but doing so may cause performance issues on large projects!"
-text = "Expand \"(Other)\""
+theme_override_styles/separator = SubResource("StyleBoxEmpty_l2i63")
 
 [node name="RescanButton" type="Button" parent="Background/Main/HBoxContainer"]
 layout_mode = 2
-offset_left = 397.0
-offset_right = 460.0
+offset_left = 427.0
+offset_right = 510.0
 offset_bottom = 31.0
 text = "Rescan"
+icon = ExtResource("2_3ckyf")
 
 [node name="HSeparator" type="HSeparator" parent="Background/Main"]
 modulate = Color(1, 1, 1, 0.470588)
 layout_mode = 2
 offset_top = 35.0
-offset_right = 460.0
+offset_right = 510.0
 offset_bottom = 39.0
 
 [node name="ScrollContainer" type="ScrollContainer" parent="Background/Main"]
 layout_mode = 2
 offset_top = 43.0
-offset_right = 460.0
-offset_bottom = 335.0
+offset_right = 510.0
+offset_bottom = 385.0
 size_flags_horizontal = 13
 size_flags_vertical = 15
 
 [node name="List" type="VBoxContainer" parent="Background/Main/ScrollContainer"]
 layout_mode = 2
-offset_right = 460.0
-offset_bottom = 292.0
+offset_right = 510.0
+offset_bottom = 342.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="Item" type="VBoxContainer" parent="Background/Main/ScrollContainer/List"]
 visible = false
 layout_mode = 2
-offset_right = 460.0
+offset_right = 510.0
 offset_bottom = 40.0
 
 [node name="Label" type="HBoxContainer" parent="Background/Main/ScrollContainer/List/Item"]
 layout_mode = 2
-offset_right = 460.0
+offset_right = 510.0
 offset_bottom = 26.0
 
 [node name="FileName" type="Label" parent="Background/Main/ScrollContainer/List/Item/Label"]
 modulate = Color(1, 1, 1, 0.705882)
 layout_mode = 2
-offset_right = 341.0
+offset_right = 391.0
 offset_bottom = 26.0
 size_flags_horizontal = 3
 text = "template.png"
 vertical_alignment = 1
 clip_text = true
+text_overrun_behavior = 3
 
 [node name="FileSize" type="Label" parent="Background/Main/ScrollContainer/List/Item/Label"]
 modulate = Color(1, 1, 1, 0.392157)
 layout_mode = 2
-offset_left = 345.0
-offset_right = 402.0
+offset_left = 395.0
+offset_right = 452.0
 offset_bottom = 26.0
 text = "24.8 KB"
 
 [node name="VSeparator" type="VSeparator" parent="Background/Main/ScrollContainer/List/Item/Label"]
 layout_mode = 2
-offset_left = 406.0
-offset_right = 410.0
+offset_left = 456.0
+offset_right = 460.0
 offset_bottom = 26.0
 theme_override_styles/separator = SubResource("StyleBoxEmpty_1vy2d")
 
 [node name="Percent" type="Label" parent="Background/Main/ScrollContainer/List/Item/Label"]
 modulate = Color(1, 1, 1, 0.705882)
 layout_mode = 2
-offset_left = 414.0
-offset_right = 460.0
+offset_left = 464.0
+offset_right = 510.0
 offset_bottom = 26.0
 text = "33.2%"
 
-[node name="ProgressBar" type="ProgressBar" parent="Background/Main/ScrollContainer/List/Item"]
+[node name="FileSizeBar" type="ProgressBar" parent="Background/Main/ScrollContainer/List/Item"]
 custom_minimum_size = Vector2i(0, 10)
 layout_mode = 2
 offset_top = 30.0
-offset_right = 460.0
+offset_right = 510.0
 offset_bottom = 40.0
 grow_horizontal = 2
 grow_vertical = 0
@@ -150,5 +178,4 @@ mouse_filter = 1
 theme_override_styles/background = SubResource("StyleBoxFlat_uoukc")
 theme_override_styles/fill = SubResource("StyleBoxFlat_8l07c")
 step = 0.1
-value = 33.2
 show_percentage = false

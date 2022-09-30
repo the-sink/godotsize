@@ -1,0 +1,153 @@
+[gd_scene load_steps=2 format=3 uid="uid://vswyuouso7"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_1vy2d"]
+
+[node name="SizeMapOptionsWindow" type="AcceptDialog"]
+disable_3d = true
+title = "Size Map Options..."
+position = Vector2i(200, 200)
+size = Vector2i(400, 300)
+visible = true
+min_size = Vector2i(250, 250)
+
+[node name="Background" type="ColorRect" parent="."]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 392.0
+offset_bottom = 251.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.113725, 0.133333, 0.160784, 1)
+
+[node name="Main" type="VBoxContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 4.0
+offset_right = -12.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="Background/Main"]
+layout_mode = 2
+offset_right = 360.0
+offset_bottom = 214.0
+size_flags_horizontal = 13
+size_flags_vertical = 15
+
+[node name="List" type="VBoxContainer" parent="Background/Main/ScrollContainer"]
+layout_mode = 2
+offset_right = 360.0
+offset_bottom = 214.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="UseImportedSize" type="VBoxContainer" parent="Background/Main/ScrollContainer/List"]
+layout_mode = 2
+offset_right = 360.0
+offset_bottom = 114.0
+
+[node name="Option" type="HBoxContainer" parent="Background/Main/ScrollContainer/List/UseImportedSize"]
+layout_mode = 2
+offset_right = 360.0
+offset_bottom = 25.0
+size_flags_vertical = 0
+
+[node name="Title" type="Label" parent="Background/Main/ScrollContainer/List/UseImportedSize/Option"]
+modulate = Color(1, 1, 1, 0.901961)
+layout_mode = 2
+offset_right = 324.0
+offset_bottom = 25.0
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 15
+text = "Scan Import Data"
+vertical_alignment = 1
+clip_text = true
+
+[node name="VSeparator" type="VSeparator" parent="Background/Main/ScrollContainer/List/UseImportedSize/Option"]
+layout_mode = 2
+offset_left = 328.0
+offset_right = 332.0
+offset_bottom = 25.0
+theme_override_styles/separator = SubResource("StyleBoxEmpty_1vy2d")
+
+[node name="CheckBox" type="CheckBox" parent="Background/Main/ScrollContainer/List/UseImportedSize/Option"]
+layout_mode = 2
+offset_left = 336.0
+offset_right = 360.0
+offset_bottom = 25.0
+
+[node name="Description" type="RichTextLabel" parent="Background/Main/ScrollContainer/List/UseImportedSize"]
+modulate = Color(0.682353, 0.682353, 0.682353, 0.784314)
+layout_mode = 2
+offset_top = 29.0
+offset_right = 360.0
+offset_bottom = 114.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_font_sizes/normal_font_size = 12
+text = "Measures the size of the imported data instead of the file itself (more accurately reflecting the size on export). For example, this size will change when a texture's compression mode is changed. This mode will not scan for assets that do not have import data (such as GDScript code and scene files)."
+fit_content_height = true
+
+[node name="ExpandOther" type="VBoxContainer" parent="Background/Main/ScrollContainer/List"]
+layout_mode = 2
+offset_top = 118.0
+offset_right = 360.0
+offset_bottom = 181.0
+
+[node name="Option" type="HBoxContainer" parent="Background/Main/ScrollContainer/List/ExpandOther"]
+layout_mode = 2
+offset_right = 360.0
+offset_bottom = 25.0
+size_flags_vertical = 0
+
+[node name="Title" type="Label" parent="Background/Main/ScrollContainer/List/ExpandOther/Option"]
+modulate = Color(1, 1, 1, 0.901961)
+layout_mode = 2
+offset_right = 324.0
+offset_bottom = 25.0
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 15
+text = "Group Small Files"
+vertical_alignment = 1
+clip_text = true
+
+[node name="VSeparator" type="VSeparator" parent="Background/Main/ScrollContainer/List/ExpandOther/Option"]
+layout_mode = 2
+offset_left = 328.0
+offset_right = 332.0
+offset_bottom = 25.0
+theme_override_styles/separator = SubResource("StyleBoxEmpty_1vy2d")
+
+[node name="CheckBox" type="CheckBox" parent="Background/Main/ScrollContainer/List/ExpandOther/Option"]
+layout_mode = 2
+offset_left = 336.0
+offset_right = 360.0
+offset_bottom = 25.0
+
+[node name="Description" type="RichTextLabel" parent="Background/Main/ScrollContainer/List/ExpandOther"]
+modulate = Color(0.682353, 0.682353, 0.682353, 0.784314)
+layout_mode = 2
+offset_top = 29.0
+offset_right = 360.0
+offset_bottom = 63.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_font_sizes/normal_font_size = 12
+text = "Combines files that take up less than 0.1% of the total size into an \"Other\" group at the bottom of the list."
+fit_content_height = true
+
+[node name="Label" type="Label" parent="Background/Main"]
+modulate = Color(1, 1, 1, 0.392157)
+layout_mode = 2
+offset_top = 218.0
+offset_right = 360.0
+offset_bottom = 235.0
+mouse_filter = 0
+mouse_default_cursor_shape = 2
+theme_override_font_sizes/font_size = 10
+text = "godotsize by the_sink - Version (x)"
+horizontal_alignment = 2

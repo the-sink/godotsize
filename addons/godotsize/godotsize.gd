@@ -1,25 +1,38 @@
 @tool
 extends EditorPlugin
 
-var file: File
+var version = "1.1"
 
 @onready var base_theme: Theme = get_editor_interface().get_base_control().theme
 @onready var window_asset: PackedScene = preload("res://addons/godotsize/SizeMapWindow.tscn")
+@onready var options_asset: PackedScene = preload("res://addons/godotsize/OptionsWindow.tscn")
 var current_window: AcceptDialog
+var options_window: AcceptDialog
 
 var rescan_button: Button
+var options_button: Button
 var list: VBoxContainer
+var mode_note: Label
 var delay_timer: Timer
 
 var total_bytes: int = 0
 var total_other: int = 0
 var file_sizes: Dictionary = {}
 var filesize_order: Array = []
-var expand_other: bool = false
 var byte_quantities: Array[float] = [1000.0, 1000000.0, 1000000000.0]
+
+var group_small_files: bool = true
+var use_imported_size: bool = false
 
 func _enter_tree() -> void:
 	add_tool_menu_item("Show Size Map...", _opened)
+	
+	var config = ConfigFile.new()
+	var err = config.load("user://godotsize.cfg")
+	if err != OK: return
+	
+	group_small_files = config.get_value("options", "group_small_files")
+	use_imported_size = config.get_value("options", "use_imported_size")
 
 
 func _exit_tree() -> void:
@@ -35,7 +48,6 @@ func _opened() -> void:
 		var position = (DisplayServer.screen_get_size() / 2) - (current_window.size / 2)
 		
 		current_window.position = position
-		current_window.theme = base_theme
 		current_window.get_node("Background").color = base_theme.get_color("dark_color_2", "Editor")
 		
 		current_window.close_requested.connect(_close_requested)
@@ -45,8 +57,14 @@ func _opened() -> void:
 		rescan_button = current_window.get_node("Background/Main/HBoxContainer/RescanButton")
 		rescan_button.pressed.connect(_scan)
 		
+		options_button = current_window.get_node("Background/Main/HBoxContainer/OptionsButton")
+		options_button.pressed.connect(_open_options_window)
+		
 		list = current_window.get_node("Background/Main/ScrollContainer/List")
+		mode_note = current_window.get_node("Background/Main/HBoxContainer/ModeNote")
 		delay_timer = current_window.get_node("DelayTimer")
+		
+		mode_note.visible = use_imported_size
 		
 		_scan()
 	else:
@@ -55,6 +73,8 @@ func _opened() -> void:
 func _close_requested() -> void:
 	if is_instance_valid(current_window):
 		current_window.hide()
+
+########## File scanning logic
 
 func _generate_readable_size(bytes: int) -> String:
 	bytes = float(bytes)
@@ -67,14 +87,57 @@ func _generate_readable_size(bytes: int) -> String:
 	else:
 		return str(bytes) + " B"
 
+func _scan_file(name: String, path: String) -> void:
+	var node_friendly_name = str(path.hash())
+	var size = 0
+	if use_imported_size:
+		var import_path = path + ".import"
+		var exists = FileAccess.file_exists(import_path)
+		if exists:
+			var config = ConfigFile.new()
+			config.load(import_path)
+			var import_data_paths = config.get_value("deps", "dest_files")
+			
+			if import_data_paths:
+				# not sure if there's any value in adding up the size of all dest_files
+				# (will change depending on enabled VRAM compression modes and export settings)
+				var file = FileAccess.open(import_data_paths[0], FileAccess.READ)
+				size += file.get_length()
+	else:
+		var file = FileAccess.open(path, FileAccess.READ)
+		size = file.get_length()
+	total_bytes += size
+	
+	file_sizes[node_friendly_name] = size
+	
+	var added = false
+	for i in range(filesize_order.size()):
+		var this_item = filesize_order[i]
+		var this_size = file_sizes[this_item]
+		
+		if size > this_size:
+			filesize_order.insert(i, node_friendly_name)
+			added = true
+			break
+
+	if not added:
+		filesize_order.append(node_friendly_name)
+				
+	var list_item = list.get_node("Item").duplicate()
+	var file_name_label = list_item.get_node("Label/FileName")
+	var file_size_label = list_item.get_node("Label/FileSize")
+	list.add_child(list_item)
+	list_item.name = node_friendly_name
+	
+	list_item.get_node("Label/FileName").text = name
+	list_item.tooltip_text = path
+
 func _scan_directory(path: String) -> void:
-	var dir: Directory = Directory.new()
-	
-	var response = dir.open(path)
-	
-	if response != OK:
+	var dir = DirAccess.open(path)
+
+	if not dir:
 		push_warning("Could not open directory at ", path)
-		push_warning("Error ", response)
+		push_warning("Error ", dir)
 		return
 	
 	dir.list_dir_begin()
@@ -82,38 +145,10 @@ func _scan_directory(path: String) -> void:
 	while file_name != "":
 		if not file_name.begins_with(".") and not file_name.ends_with(".import"):
 			var new_path = path + file_name
-			var node_friendly_name = str(new_path.hash())
 			if dir.current_is_dir():
 				_scan_directory(new_path + "/")
 			else:
-				file.open(new_path, File.READ)
-				var size = file.get_length()
-				total_bytes += size
-				file.close()
-				
-				file_sizes[node_friendly_name] = size
-				
-				var added = false
-				for i in range(filesize_order.size()):
-					var this_item = filesize_order[i]
-					var this_size = file_sizes[this_item]
-					
-					if size > this_size:
-						filesize_order.insert(i, node_friendly_name)
-						added = true
-						break
-
-				if not added:
-					filesize_order.append(node_friendly_name)
-							
-				var list_item = list.get_node("Item").duplicate()
-				var file_name_label = list_item.get_node("Label/FileName")
-				var file_size_label = list_item.get_node("Label/FileSize")
-				list.add_child(list_item)
-				list_item.name = node_friendly_name
-				
-				list_item.get_node("Label/FileName").text = file_name
-				list_item.tooltip_text = new_path
+				_scan_file(file_name, new_path)
 		file_name = dir.get_next()
 
 func _scan():
@@ -126,8 +161,6 @@ func _scan():
 	file_sizes = {}
 	filesize_order = []
 
-	expand_other = current_window.get_node("Background/Main/HBoxContainer/ExpandOther").is_pressed()
-
 	var folder_path = ProjectSettings.globalize_path("res://")
 
 	for item in list.get_children():
@@ -139,7 +172,6 @@ func _scan():
 	delay_timer.start()
 	await delay_timer.timeout
 	
-	file = File.new()
 	_scan_directory(folder_path)
 	
 	for id in filesize_order:
@@ -149,20 +181,20 @@ func _scan():
 		var item = list.get_node(str(id))
 		
 		if not is_instance_valid(item): continue
-		if percent >= 0.1 or expand_other:
+		if (percent >= 0.1 or not group_small_files) and size > 0:
 			list.move_child(item, order)
 			
 			var file_size_label = item.get_node("Label/FileSize")
 			var percent_label = item.get_node("Label/Percent")
-			var progress_bar = item.get_node("ProgressBar")
+			var filesize_bar = item.get_node("FileSizeBar")
 			
 			file_size_label.text = _generate_readable_size(size)
 			
 			
 			percent_label.text = str(percent) + "%"
-			progress_bar.value = percent
+			filesize_bar.value = percent
 			
-			if percent < 0.1 and expand_other:
+			if percent < 0.1 and not group_small_files:
 				item.modulate = Color(1, 1, 1, 0.25)
 			
 			item.visible = true
@@ -170,21 +202,78 @@ func _scan():
 			item.queue_free()
 			total_other += size
 			
-	if not expand_other and total_other > 0:
+	if group_small_files and total_other > 0:
 		var other_item = list.get_node("Item").duplicate()
 		list.add_child(other_item)
 	
 		var file_name_label = other_item.get_node("Label/FileName")
 		var file_size_label = other_item.get_node("Label/FileSize")
 		var percent_label = other_item.get_node("Label/Percent")
-		var progress_bar = other_item.get_node("ProgressBar")
+		var filesize_bar = other_item.get_node("FileSizeBar")
 		var percent = snapped((float(total_other) / float(total_bytes)) * 100, 0.1)
 		
 		file_name_label.text = "(Other)"
 		file_size_label.text = _generate_readable_size(total_other)
 		percent_label.text = str(percent) + "%"
-		progress_bar.value = percent
+		filesize_bar.value = percent
 		other_item.modulate = Color(1, 1, 1, 0.25)
 		other_item.visible = true
 	
 	rescan_button.disabled = false
+
+
+########## Options window
+
+func _open_options_window() -> void:
+	if options_window: 
+		options_window.show()
+	else:
+		options_window = options_asset.instantiate()
+		current_window.add_child(options_window)
+		
+		var position = (DisplayServer.screen_get_size() / 2) - (options_window.size / 2)
+		
+		options_window.position = position
+		options_window.get_node("Background").color = base_theme.get_color("dark_color_2", "Editor")
+		
+		options_window.close_requested.connect(_close_options_window)
+		options_window.cancelled.connect(_close_options_window)
+		options_window.confirmed.connect(_close_options_window)
+		
+		var import_option: CheckBox = options_window.get_node("Background/Main/ScrollContainer/List/UseImportedSize/Option/CheckBox")
+		var other_option: CheckBox = options_window.get_node("Background/Main/ScrollContainer/List/ExpandOther/Option/CheckBox")
+		
+		import_option.button_pressed = use_imported_size
+		other_option.button_pressed = group_small_files
+		
+		import_option.toggled.connect(_import_option_toggled)
+		other_option.toggled.connect(_other_option_toggled)
+		
+		var note: Label = options_window.get_node("Background/Main/Label")
+		
+		note.text = "godotsize by the_sink - Version " + version
+		note.gui_input.connect(_note_gui_input)
+		
+func _import_option_toggled(pressed: bool) -> void:
+	use_imported_size = pressed
+	
+func _other_option_toggled(pressed: bool) -> void:
+	group_small_files = pressed
+
+func _note_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.is_pressed() and event.button_index == 1:
+		OS.shell_open("https://github.com/the-sink/godotsize")
+
+func _close_options_window() -> void:
+	if is_instance_valid(options_window):
+		options_window.hide()
+		_apply_options()
+
+func _apply_options():
+	var config = ConfigFile.new()
+	
+	config.set_value("options", "group_small_files", group_small_files)
+	config.set_value("options", "use_imported_size", use_imported_size)
+	mode_note.visible = use_imported_size
+	
+	config.save("user://godotsize.cfg")

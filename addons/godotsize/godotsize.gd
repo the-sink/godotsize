@@ -1,8 +1,6 @@
 @tool
 extends EditorPlugin
 
-var version = "1.1"
-
 @onready var base_theme: Theme = get_editor_interface().get_base_control().theme
 @onready var window_asset: PackedScene = preload("res://addons/godotsize/SizeMapWindow.tscn")
 @onready var options_asset: PackedScene = preload("res://addons/godotsize/OptionsWindow.tscn")
@@ -23,6 +21,7 @@ var byte_quantities: Array[float] = [1000.0, 1000000.0, 1000000000.0]
 
 var group_small_files: bool = true
 var use_imported_size: bool = false
+
 
 func _enter_tree() -> void:
 	add_tool_menu_item("Show Size Map...", _opened)
@@ -45,13 +44,10 @@ func _opened() -> void:
 		current_window = window_asset.instantiate()
 		get_editor_interface().get_base_control().add_child(current_window)
 		
-		var position = (DisplayServer.screen_get_size() / 2) - (current_window.size / 2)
-		
-		current_window.position = position
 		current_window.get_node("Background").color = base_theme.get_color("dark_color_2", "Editor")
 		
 		current_window.close_requested.connect(_close_requested)
-		current_window.cancelled.connect(_close_requested)
+		current_window.canceled.connect(_close_requested)
 		current_window.confirmed.connect(_close_requested)
 		
 		rescan_button = current_window.get_node("Background/Main/HBoxContainer/RescanButton")
@@ -231,13 +227,10 @@ func _open_options_window() -> void:
 		options_window = options_asset.instantiate()
 		current_window.add_child(options_window)
 		
-		var position = (DisplayServer.screen_get_size() / 2) - (options_window.size / 2)
-		
-		options_window.position = position
 		options_window.get_node("Background").color = base_theme.get_color("dark_color_2", "Editor")
 		
 		options_window.close_requested.connect(_close_options_window)
-		options_window.cancelled.connect(_close_options_window)
+		options_window.canceled.connect(_close_options_window)
 		options_window.confirmed.connect(_close_options_window)
 		
 		var import_option: CheckBox = options_window.get_node("Background/Main/ScrollContainer/List/UseImportedSize/Option/CheckBox")
@@ -250,9 +243,13 @@ func _open_options_window() -> void:
 		other_option.toggled.connect(_other_option_toggled)
 		
 		var note: Label = options_window.get_node("Background/Main/Label")
-		
-		note.text = "godotsize by the_sink - Version " + version
 		note.gui_input.connect(_note_gui_input)
+		
+		var config = ConfigFile.new()
+		var err = config.load("res://addons/godotsize/plugin.cfg")
+		if err != OK: return
+		
+		note.text = "godotsize by the_sink - Version " + config.get_value("plugin", "version")
 		
 func _import_option_toggled(pressed: bool) -> void:
 	use_imported_size = pressed

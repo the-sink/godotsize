@@ -1,7 +1,6 @@
 @tool
 extends EditorPlugin
 
-@onready var base_theme: Theme = get_editor_interface().get_base_control().theme
 @onready var window_asset: PackedScene = preload("res://addons/godotsize/SizeMapWindow.tscn")
 @onready var options_asset: PackedScene = preload("res://addons/godotsize/OptionsWindow.tscn")
 var current_window: AcceptDialog
@@ -17,7 +16,7 @@ var total_bytes: int = 0
 var total_other: int = 0
 var file_sizes: Dictionary = {}
 var filesize_order: Array = []
-var byte_quantities: Array[float] = [1000.0, 1000000.0, 1000000000.0]
+var byte_quantities: Array[float] = [1e3, 1e6, 1e9]
 
 var group_small_files: bool = true
 var use_imported_size: bool = false
@@ -41,10 +40,11 @@ func _exit_tree() -> void:
 
 func _opened() -> void:
 	if not is_instance_valid(current_window):
-		current_window = window_asset.instantiate()
-		get_editor_interface().get_base_control().add_child(current_window)
 		
-		current_window.get_node("Background").color = base_theme.get_color("dark_color_2", "Editor")
+		current_window = window_asset.instantiate()
+		EditorInterface.get_base_control().add_child(current_window)
+		
+		current_window.get_node("Background").color = EditorInterface.get_editor_theme().get_color("dark_color_2", "Editor")
 		
 		current_window.close_requested.connect(_close_requested)
 		current_window.canceled.connect(_close_requested)
@@ -120,11 +120,9 @@ func _scan_file(name: String, path: String) -> void:
 		filesize_order.append(node_friendly_name)
 				
 	var list_item = list.get_node("Item").duplicate()
-	var file_name_label = list_item.get_node("Label/FileName")
-	var file_size_label = list_item.get_node("Label/FileSize")
+	
 	list.add_child(list_item)
 	list_item.name = node_friendly_name
-	
 	list_item.get_node("Label/FileName").text = name
 	list_item.tooltip_text = path
 
@@ -171,22 +169,20 @@ func _scan():
 	_scan_directory(folder_path)
 	
 	for id in filesize_order:
-		var order = filesize_order.find(id)
+		var position = filesize_order.find(id)
 		var size = file_sizes[id]
 		var percent = snapped((float(size) / float(total_bytes)) * 100, 0.1)
 		var item = list.get_node(str(id))
 		
 		if not is_instance_valid(item): continue
 		if (percent >= 0.1 or not group_small_files) and size > 0:
-			list.move_child(item, order)
+			list.move_child(item, position)
 			
 			var file_size_label = item.get_node("Label/FileSize")
 			var percent_label = item.get_node("Label/Percent")
 			var filesize_bar = item.get_node("FileSizeBar")
 			
 			file_size_label.text = _generate_readable_size(size)
-			
-			
 			percent_label.text = str(percent) + "%"
 			filesize_bar.value = percent
 			
@@ -227,7 +223,7 @@ func _open_options_window() -> void:
 		options_window = options_asset.instantiate()
 		current_window.add_child(options_window)
 		
-		options_window.get_node("Background").color = base_theme.get_color("dark_color_2", "Editor")
+		options_window.get_node("Background").color = EditorInterface.get_editor_theme().get_color("dark_color_2", "Editor")
 		
 		options_window.close_requested.connect(_close_options_window)
 		options_window.canceled.connect(_close_options_window)

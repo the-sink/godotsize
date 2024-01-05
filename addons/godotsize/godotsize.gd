@@ -27,7 +27,9 @@ func _enter_tree() -> void:
 	
 	var config = ConfigFile.new()
 	var err = config.load("user://godotsize.cfg")
-	if err != OK: return
+	if err != OK:
+		push_warning("Error loading ConfigFile ... error ", err)
+		return
 	
 	group_small_files = config.get_value("options", "group_small_files")
 	use_imported_size = config.get_value("options", "use_imported_size")
@@ -39,32 +41,32 @@ func _exit_tree() -> void:
 		current_window.queue_free()
 
 func _opened() -> void:
-	if not is_instance_valid(current_window):
-		
-		current_window = window_asset.instantiate()
-		EditorInterface.get_base_control().add_child(current_window)
-		
-		current_window.get_node("Background").color = EditorInterface.get_editor_theme().get_color("dark_color_2", "Editor")
-		
-		current_window.close_requested.connect(_close_requested)
-		current_window.canceled.connect(_close_requested)
-		current_window.confirmed.connect(_close_requested)
-		
-		rescan_button = current_window.get_node("Background/Main/HBoxContainer/RescanButton")
-		rescan_button.pressed.connect(_scan)
-		
-		options_button = current_window.get_node("Background/Main/HBoxContainer/OptionsButton")
-		options_button.pressed.connect(_open_options_window)
-		
-		list = current_window.get_node("Background/Main/ScrollContainer/List")
-		mode_note = current_window.get_node("Background/Main/HBoxContainer/ModeNote")
-		delay_timer = current_window.get_node("DelayTimer")
-		
-		mode_note.visible = use_imported_size
-		
-		_scan()
-	else:
+	if is_instance_valid(current_window):
 		current_window.show()
+		return
+
+	current_window = window_asset.instantiate()
+	EditorInterface.get_base_control().add_child(current_window)
+	
+	current_window.get_node("Background").color = EditorInterface.get_editor_theme().get_color("dark_color_2", "Editor")
+	
+	current_window.close_requested.connect(_close_requested)
+	current_window.canceled.connect(_close_requested)
+	current_window.confirmed.connect(_close_requested)
+	
+	rescan_button = current_window.get_node("Background/Main/HBoxContainer/RescanButton")
+	rescan_button.pressed.connect(_scan)
+	
+	options_button = current_window.get_node("Background/Main/HBoxContainer/OptionsButton")
+	options_button.pressed.connect(_open_options_window)
+	
+	list = current_window.get_node("Background/Main/ScrollContainer/List")
+	mode_note = current_window.get_node("Background/Main/HBoxContainer/ModeNote")
+	delay_timer = current_window.get_node("DelayTimer")
+	
+	mode_note.visible = use_imported_size
+	
+	_scan()
 
 func _close_requested() -> void:
 	if is_instance_valid(current_window):
@@ -91,7 +93,12 @@ func _scan_file(name: String, path: String) -> void:
 		var exists = FileAccess.file_exists(import_path)
 		if exists:
 			var config = ConfigFile.new()
-			config.load(import_path)
+			var err = config.load(import_path)
+
+			if err != OK:
+				push_warning("Error scanning file ", import_path, " ... error ", err)
+				return
+
 			var import_data_paths = config.get_value("deps", "dest_files")
 			
 			if import_data_paths:
@@ -130,8 +137,7 @@ func _scan_directory(path: String) -> void:
 	var dir = DirAccess.open(path)
 
 	if not dir:
-		push_warning("Could not open directory at ", path)
-		push_warning("Error ", dir)
+		push_warning("Could not open directory at ", path, " ... error ", DirAccess.get_open_error())
 		return
 	
 	dir.list_dir_begin()
@@ -217,35 +223,36 @@ func _scan():
 ########## Options window
 
 func _open_options_window() -> void:
-	if options_window: 
+	if is_instance_valid(options_window): 
 		options_window.show()
-	else:
-		options_window = options_asset.instantiate()
-		current_window.add_child(options_window)
-		
-		options_window.get_node("Background").color = EditorInterface.get_editor_theme().get_color("dark_color_2", "Editor")
-		
-		options_window.close_requested.connect(_close_options_window)
-		options_window.canceled.connect(_close_options_window)
-		options_window.confirmed.connect(_close_options_window)
-		
-		var import_option: CheckBox = options_window.get_node("Background/Main/ScrollContainer/List/UseImportedSize/Option/CheckBox")
-		var other_option: CheckBox = options_window.get_node("Background/Main/ScrollContainer/List/ExpandOther/Option/CheckBox")
-		
-		import_option.button_pressed = use_imported_size
-		other_option.button_pressed = group_small_files
-		
-		import_option.toggled.connect(_import_option_toggled)
-		other_option.toggled.connect(_other_option_toggled)
-		
-		var note: Label = options_window.get_node("Background/Main/Label")
-		note.gui_input.connect(_note_gui_input)
-		
-		var config = ConfigFile.new()
-		var err = config.load("res://addons/godotsize/plugin.cfg")
-		if err != OK: return
-		
-		note.text = "godotsize by the_sink - Version " + config.get_value("plugin", "version")
+		return
+
+	options_window = options_asset.instantiate()
+	current_window.add_child(options_window)
+	
+	options_window.get_node("Background").color = EditorInterface.get_editor_theme().get_color("dark_color_2", "Editor")
+	
+	options_window.close_requested.connect(_close_options_window)
+	options_window.canceled.connect(_close_options_window)
+	options_window.confirmed.connect(_close_options_window)
+	
+	var import_option: CheckBox = options_window.get_node("Background/Main/ScrollContainer/List/UseImportedSize/Option/CheckBox")
+	var other_option: CheckBox = options_window.get_node("Background/Main/ScrollContainer/List/ExpandOther/Option/CheckBox")
+	
+	import_option.button_pressed = use_imported_size
+	other_option.button_pressed = group_small_files
+	
+	import_option.toggled.connect(_import_option_toggled)
+	other_option.toggled.connect(_other_option_toggled)
+	
+	var note: Label = options_window.get_node("Background/Main/Label")
+	note.gui_input.connect(_note_gui_input)
+	
+	var config = ConfigFile.new()
+	var err = config.load("res://addons/godotsize/plugin.cfg")
+	if err != OK: return
+	
+	note.text = "GodotSize " + config.get_value("plugin", "version") + " by the_sink"
 		
 func _import_option_toggled(pressed: bool) -> void:
 	use_imported_size = pressed
@@ -269,4 +276,6 @@ func _apply_options():
 	config.set_value("options", "use_imported_size", use_imported_size)
 	mode_note.visible = use_imported_size
 	
-	config.save("user://godotsize.cfg")
+	var err = config.save("user://godotsize.cfg")
+	if err != OK:
+		push_warning("Error saving ConfigFile ... error ", err)

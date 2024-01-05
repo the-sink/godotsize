@@ -4,8 +4,8 @@
 
 [node name="SizeMapOptionsWindow" type="AcceptDialog"]
 disable_3d = true
-initial_position = 2
 title = "Size Map Options..."
+initial_position = 2
 size = Vector2i(400, 300)
 visible = true
 min_size = Vector2i(250, 250)
@@ -111,5 +111,5 @@ layout_mode = 2
 mouse_filter = 0
 mouse_default_cursor_shape = 2
 theme_override_font_sizes/font_size = 10
-text = "godotsize by the_sink - Version (x)"
+text = "GodotSize by the_sink"
 horizontal_alignment = 2

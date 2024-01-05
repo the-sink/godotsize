@@ -1,7 +1,7 @@
 [gd_scene load_steps=7 format=3 uid="uid://cbkdorc6w0dln"]
 
-[ext_resource type="Texture2D" uid="uid://c3neulsswfssf" path="res://addons/godotsize/Icons/cog.png" id="1_4mbh3"]
-[ext_resource type="Texture2D" uid="uid://djjln8qyewx7n" path="res://addons/godotsize/Icons/reload.png" id="2_3ckyf"]
+[ext_resource type="Texture2D" uid="uid://bxptop0x5q6nl" path="res://addons/godotsize/Icons/cog.png" id="1_4mbh3"]
+[ext_resource type="Texture2D" uid="uid://cxerf6lkos5vd" path="res://addons/godotsize/Icons/reload.png" id="2_3ckyf"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_l2i63"]
 
@@ -25,8 +25,8 @@ corner_detail = 4
 
 [node name="SizeMapWindow" type="AcceptDialog"]
 disable_3d = true
-initial_position = 2
 title = "Size Map"
+initial_position = 2
 size = Vector2i(550, 450)
 visible = true
 min_size = Vector2i(300, 300)

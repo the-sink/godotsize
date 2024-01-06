@@ -7,6 +7,7 @@ var current_window: AcceptDialog
 var options_window: AcceptDialog
 
 var rescan_button: Button
+var scan_label: HBoxContainer
 var options_button: Button
 var list: VBoxContainer
 var mode_note: Label
@@ -61,6 +62,7 @@ func _opened() -> void:
 	options_button.pressed.connect(_open_options_window)
 	
 	list = current_window.get_node("Background/Main/ScrollContainer/List")
+	scan_label = list.get_node("ScanningLabel")
 	mode_note = current_window.get_node("Background/Main/HBoxContainer/ModeNote")
 	delay_timer = current_window.get_node("DelayTimer")
 	
@@ -84,6 +86,8 @@ func _generate_readable_size(bytes: int) -> String:
 		return str(snapped(bytes / byte_quantities[0], 0.01)) + " KB"
 	else:
 		return str(bytes) + " B"
+
+### TODO: Await a frame after n milliseconds to prevent the scan from completely freezing the editor (?)
 
 func _scan_file(name: String, path: String) -> void:
 	var node_friendly_name = str(path.hash())
@@ -133,28 +137,26 @@ func _scan_file(name: String, path: String) -> void:
 	list_item.get_node("Label/FileName").text = name
 	list_item.tooltip_text = path
 
-func _scan_directory(path: String) -> void:
-	var dir = DirAccess.open(path)
+func _scan_directory(path: String, dir: DirAccess) -> void:
+	if dir == null: dir = DirAccess.open(path)
+	else: dir.change_dir(path)
 
 	if not dir:
 		push_warning("Could not open directory at ", path, " ... error ", DirAccess.get_open_error())
 		return
 	
-	dir.list_dir_begin()
-	var file_name = dir.get_next()
-	while file_name != "":
-		if not file_name.begins_with(".") and not file_name.ends_with(".import"):
-			var new_path = path + file_name
-			if dir.current_is_dir():
-				_scan_directory(new_path + "/")
-			else:
-				_scan_file(file_name, new_path)
-		file_name = dir.get_next()
+	for file in dir.get_files():
+		if file.begins_with(".") or file.ends_with(".import"): continue
+		_scan_file(file, path + file)
+	for directory in dir.get_directories():
+		if directory.begins_with("."): continue
+		_scan_directory(path + directory + "/", dir)
 
 func _scan():
 	if not is_instance_valid(current_window): return
 	
 	rescan_button.disabled = true
+	scan_label.visible = true
 
 	total_bytes = 0
 	total_other = 0
@@ -164,7 +166,7 @@ func _scan():
 	var folder_path = ProjectSettings.globalize_path("res://")
 
 	for item in list.get_children():
-		if item.visible:
+		if item is VBoxContainer and item.visible:
 			item.queue_free()
 	
 	# artificial delay added to make it obvious something is happening on small projects
@@ -172,7 +174,7 @@ func _scan():
 	delay_timer.start()
 	await delay_timer.timeout
 	
-	_scan_directory(folder_path)
+	_scan_directory(folder_path, null)
 	
 	for id in filesize_order:
 		var position = filesize_order.find(id)
@@ -218,6 +220,7 @@ func _scan():
 		other_item.visible = true
 	
 	rescan_button.disabled = false
+	scan_label.visible = false
 
 
 ########## Options window

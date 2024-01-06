@@ -1,9 +1,13 @@
-[gd_scene load_steps=7 format=3 uid="uid://cbkdorc6w0dln"]
+[gd_scene load_steps=9 format=3 uid="uid://cbkdorc6w0dln"]
 
 [ext_resource type="Texture2D" uid="uid://bxptop0x5q6nl" path="res://addons/godotsize/Icons/cog.png" id="1_4mbh3"]
 [ext_resource type="Texture2D" uid="uid://cxerf6lkos5vd" path="res://addons/godotsize/Icons/reload.png" id="2_3ckyf"]
+[ext_resource type="Texture2D" uid="uid://kdcfigmxsr35" path="res://addons/godotsize/Icons/scan.png" id="3_it35i"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_l2i63"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_tv3er"]
+font_size = 18
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_1vy2d"]
 
@@ -98,6 +102,23 @@ size_flags_vertical = 15
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+
+[node name="ScanningLabel" type="HBoxContainer" parent="Background/Main/ScrollContainer/List"]
+modulate = Color(1, 1, 1, 0.627451)
+layout_mode = 2
+alignment = 1
+
+[node name="TextureRect" type="TextureRect" parent="Background/Main/ScrollContainer/List/ScanningLabel"]
+custom_minimum_size = Vector2(22, 28)
+layout_mode = 2
+texture = ExtResource("3_it35i")
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="Background/Main/ScrollContainer/List/ScanningLabel"]
+layout_mode = 2
+size_flags_vertical = 1
+text = "Scanning..."
+label_settings = SubResource("LabelSettings_tv3er")
 
 [node name="Item" type="VBoxContainer" parent="Background/Main/ScrollContainer/List"]
 visible = false

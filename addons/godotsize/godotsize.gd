@@ -3,15 +3,21 @@ extends EditorPlugin
 
 @onready var window_asset: PackedScene = preload("res://addons/godotsize/SizeMapWindow.tscn")
 @onready var options_asset: PackedScene = preload("res://addons/godotsize/OptionsWindow.tscn")
+@onready var errors_asset: PackedScene = preload("res://addons/godotsize/ErrorsWindow.tscn")
 var current_window: AcceptDialog
 var options_window: AcceptDialog
+var errors_window: AcceptDialog
 
 var rescan_button: Button
 var scan_label: HBoxContainer
 var options_button: Button
+var errors_button: Button
 var list: VBoxContainer
 var mode_note: Label
 var delay_timer: Timer
+
+var n_folders_scanned: int = 0
+var n_files_scanned: int = 0
 
 var total_bytes: int = 0
 var total_other: int = 0
@@ -21,19 +27,26 @@ var byte_quantities: Array[float] = [1e3, 1e6, 1e9]
 
 var group_small_files: bool = true
 var use_imported_size: bool = false
+var auto_show_errors: bool = true
 
+var scan_failure_messages: Array[String] = []
 
 func _enter_tree() -> void:
 	add_tool_menu_item("Show Size Map...", _opened)
 	
+	var config_exists = FileAccess.file_exists("user://godotsize.cfg")
+	if not config_exists: _apply_options()
+	
 	var config = ConfigFile.new()
 	var err = config.load("user://godotsize.cfg")
 	if err != OK:
-		push_warning("Error loading ConfigFile ... error ", err)
+		push_warning("Error loading GodotSize config file ... error ", err)
 		return
 	
-	group_small_files = config.get_value("options", "group_small_files")
-	use_imported_size = config.get_value("options", "use_imported_size")
+	group_small_files = config.get_value("options", "group_small_files", true)
+	use_imported_size = config.get_value("options", "use_imported_size", false)
+	auto_show_errors = config.get_value("options", "auto_show_errors", true)
+	
 
 
 func _exit_tree() -> void:
@@ -60,6 +73,9 @@ func _opened() -> void:
 	
 	options_button = current_window.get_node("Background/Main/HBoxContainer/OptionsButton")
 	options_button.pressed.connect(_open_options_window)
+	
+	errors_button = current_window.get_node("Background/Main/HBoxContainer/ErrorsButton")
+	errors_button.pressed.connect(_open_errors_window)
 	
 	list = current_window.get_node("Background/Main/ScrollContainer/List")
 	scan_label = list.get_node("ScanningLabel")
@@ -100,19 +116,33 @@ func _scan_file(name: String, path: String) -> void:
 			var err = config.load(import_path)
 
 			if err != OK:
-				push_warning("Error scanning file ", import_path, " ... error ", err)
+				scan_failure_messages.append("Could not load import data config file at %s ... error " % [import_path, err])
 				return
 
-			var import_data_paths = config.get_value("deps", "dest_files")
+			var import_data_paths = config.get_value("deps", "dest_files", false)
 			
-			if import_data_paths:
+			if import_data_paths and len(import_data_paths) > 0:
 				# not sure if there's any value in adding up the size of all dest_files
 				# (will change depending on enabled VRAM compression modes and export settings)
 				var file = FileAccess.open(import_data_paths[0], FileAccess.READ)
-				size += file.get_length()
+				if file:
+					size += file.get_length()
+					n_files_scanned += 1
+				else:
+					scan_failure_messages.append("Unable to read import data at %s ... error %s" % [import_data_paths[0], FileAccess.get_open_error()])
+					return
+			else:
+				scan_failure_messages.append("Import data config file at %s loaded, but is malformed (deps/dest_files not found or is empty)." % [import_path])
+				return
 	else:
 		var file = FileAccess.open(path, FileAccess.READ)
-		size = file.get_length()
+		if file:
+			size = file.get_length()
+			n_files_scanned += 1
+		else:
+			scan_failure_messages.append("Unable to read file at %s ... error %s" % [path, FileAccess.get_open_error()])
+			return
+			
 	total_bytes += size
 	
 	file_sizes[node_friendly_name] = size
@@ -142,7 +172,7 @@ func _scan_directory(path: String, dir: DirAccess) -> void:
 	else: dir.change_dir(path)
 
 	if not dir:
-		push_warning("Could not open directory at ", path, " ... error ", DirAccess.get_open_error())
+		scan_failure_messages.append("Could not open directory at %s ... error %s" % [path, DirAccess.get_open_error()])
 		return
 	
 	for file in dir.get_files():
@@ -151,17 +181,23 @@ func _scan_directory(path: String, dir: DirAccess) -> void:
 	for directory in dir.get_directories():
 		if directory.begins_with("."): continue
 		_scan_directory(path + directory + "/", dir)
+	n_folders_scanned += 1
 
 func _scan():
 	if not is_instance_valid(current_window): return
 	
+	var initial_time = Time.get_ticks_msec()
+	
 	rescan_button.disabled = true
 	scan_label.visible = true
 
+	n_folders_scanned = 0
+	n_files_scanned = 0
 	total_bytes = 0
 	total_other = 0
 	file_sizes = {}
 	filesize_order = []
+	scan_failure_messages = []
 
 	var folder_path = ProjectSettings.globalize_path("res://")
 
@@ -221,6 +257,15 @@ func _scan():
 	
 	rescan_button.disabled = false
 	scan_label.visible = false
+	
+	var n_errors: int = len(scan_failure_messages)
+	errors_button.visible = n_errors > 0
+	if errors_button.visible and auto_show_errors: _open_errors_window()
+	
+	print("GodotSize: Scanned %d files in %d directories. Took %.2f seconds, with %d error(s)%s" % [
+		n_files_scanned, n_folders_scanned, (Time.get_ticks_msec() - initial_time) / 1000.0,
+		n_errors, "  ... see error log in size map window." if n_errors > 0 else "!"
+	])
 
 
 ########## Options window
@@ -250,13 +295,7 @@ func _open_options_window() -> void:
 	
 	var note: Label = options_window.get_node("Background/Main/Label")
 	note.gui_input.connect(_note_gui_input)
-	
-	var config = ConfigFile.new()
-	var err = config.load("res://addons/godotsize/plugin.cfg")
-	if err != OK: return
-	
-	note.text = "GodotSize " + config.get_value("plugin", "version") + " by the_sink"
-		
+
 func _import_option_toggled(pressed: bool) -> void:
 	use_imported_size = pressed
 	
@@ -277,8 +316,43 @@ func _apply_options():
 	
 	config.set_value("options", "group_small_files", group_small_files)
 	config.set_value("options", "use_imported_size", use_imported_size)
-	mode_note.visible = use_imported_size
+	config.set_value("options", "auto_show_errors", auto_show_errors)
+	if mode_note: mode_note.visible = use_imported_size
 	
 	var err = config.save("user://godotsize.cfg")
 	if err != OK:
-		push_warning("Error saving ConfigFile ... error ", err)
+		push_warning("Error saving GodotSize config file ... error ", err)
+
+########## Errors window
+
+func _open_errors_window() -> void:
+	if is_instance_valid(errors_window):
+		errors_window.show()
+		_show_errors()
+		return
+	
+	errors_window = errors_asset.instantiate()
+	current_window.add_child(errors_window)
+	
+	errors_window.get_node("Background").color = EditorInterface.get_editor_theme().get_color("dark_color_2", "Editor")
+	
+	var auto_checkbox = errors_window.get_node("Background/Main/ShowAutomatically/CheckBox")
+	auto_checkbox.button_pressed = auto_show_errors
+	auto_checkbox.toggled.connect(func(toggled_on: bool):
+		auto_show_errors = toggled_on
+		_apply_options()
+	)
+	
+	_show_errors()
+	#errors_window.show()
+
+func _show_errors() -> void:
+	var full_message = ""
+	
+	var n = 0
+	for message in scan_failure_messages:
+		n += 1
+		full_message += "	%d: %s\n" % [n, message]
+	
+	errors_window.get_node("Background/Main/Log").text = full_message
+	errors_window.get_node("Background/Main/TitleLabel").text = "Encountered %d error(s) while scanning:" % [n]

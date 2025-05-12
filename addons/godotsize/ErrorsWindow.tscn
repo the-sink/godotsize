@@ -1,0 +1,65 @@
+[gd_scene load_steps=2 format=3 uid="uid://cfqjsh5f2ra0m"]
+
+[ext_resource type="FontFile" uid="uid://by1gg18r0vo1p" path="res://addons/godotsize/assets/fonts/RobotoMono-Regular.ttf" id="1_rl238"]
+
+[node name="SizeMapErrorsWindow" type="AcceptDialog"]
+disable_3d = true
+title = "Scan Errors"
+initial_position = 2
+size = Vector2i(600, 400)
+visible = true
+min_size = Vector2i(250, 250)
+
+[node name="Background" type="ColorRect" parent="."]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 592.0
+offset_bottom = 351.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.113725, 0.133333, 0.160784, 1)
+
+[node name="Main" type="VBoxContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 4.0
+offset_right = -12.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TitleLabel" type="Label" parent="Background/Main"]
+modulate = Color(1, 1, 1, 0.392157)
+layout_mode = 2
+mouse_filter = 0
+mouse_default_cursor_shape = 2
+theme_override_font_sizes/font_size = 14
+text = "Encountered 0 error(s) while scanning:"
+horizontal_alignment = 1
+
+[node name="Log" type="TextEdit" parent="Background/Main"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_fonts/font = ExtResource("1_rl238")
+editable = false
+emoji_menu_enabled = false
+drag_and_drop_selection_enabled = false
+virtual_keyboard_enabled = false
+middle_mouse_paste_enabled = false
+wrap_mode = 1
+
+[node name="ShowAutomatically" type="HBoxContainer" parent="Background/Main"]
+layout_mode = 2
+alignment = 2
+
+[node name="Label" type="Label" parent="Background/Main/ShowAutomatically"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.74642, 0.74642, 0.74642, 1)
+text = "Show error log automatically after scanning"
+
+[node name="CheckBox" type="CheckBox" parent="Background/Main/ShowAutomatically"]
+layout_mode = 2
+button_pressed = true

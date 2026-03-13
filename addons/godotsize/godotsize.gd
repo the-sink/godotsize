@@ -22,6 +22,7 @@ var n_files_scanned: int = 0
 var total_bytes: int = 0
 var total_other: int = 0
 var file_sizes: Dictionary = {}
+var file_meta: Dictionary = {}
 var filesize_order: Array = []
 var byte_quantities: Array[float] = [1e3, 1e6, 1e9]
 
@@ -29,7 +30,14 @@ var group_small_files: bool = true
 var use_imported_size: bool = false
 var auto_show_errors: bool = true
 
-var scan_failure_messages: Array[String] = []
+var scan_errors: Dictionary[String, Array] = {}
+var num_errors: int = 0
+
+func add_error_msg(message: String, filepath: String):
+	if not message in scan_errors:
+		scan_errors[message] = []
+	scan_errors[message].append(filepath)
+	num_errors += 1
 
 func _enter_tree() -> void:
 	add_tool_menu_item("Show Size Map...", _opened)
@@ -47,7 +55,6 @@ func _enter_tree() -> void:
 	use_imported_size = config.get_value("options", "use_imported_size", false)
 	auto_show_errors = config.get_value("options", "auto_show_errors", true)
 	
-
 
 func _exit_tree() -> void:
 	remove_tool_menu_item("Show Size Map...")
@@ -113,74 +120,62 @@ func _scan_file(name: String, path: String) -> void:
 		var exists = FileAccess.file_exists(import_path)
 		if exists:
 			var config = ConfigFile.new()
-			var err = config.load(import_path)
+			var err: Error = config.load(import_path)
 
 			if err != OK:
-				scan_failure_messages.append("Could not load import data config file at %s ... error " % [import_path, err])
+				add_error_msg("Could not load import data config file ... error %s" % err, import_path)
 				return
 
 			var import_data_paths = config.get_value("deps", "dest_files", false)
 			
 			if import_data_paths and len(import_data_paths) > 0:
-				# not sure if there's any value in adding up the size of all dest_files
-				# (will change depending on enabled VRAM compression modes and export settings)
-				var file = FileAccess.open(import_data_paths[0], FileAccess.READ)
-				if file:
-					size += file.get_length()
+				var target_path: String = import_data_paths[0]
+				var this_size: int = FileAccess.get_size(target_path)
+				if this_size > -1:
+					size = this_size
 					n_files_scanned += 1
 				else:
-					scan_failure_messages.append("Unable to read import data at %s ... error %s" % [import_data_paths[0], FileAccess.get_open_error()])
-					return
+					# fallback to open->get_length if get_size fails
+					var file = FileAccess.open(import_data_paths[0], FileAccess.READ)
+					if file:
+						size += file.get_length()
+						n_files_scanned += 1
+					else:
+						var file_open_error: Error = FileAccess.get_open_error()
+						add_error_msg("Unable to open or read import data ... error %s" % file_open_error, import_data_paths[0])
+						return
 			else:
-				scan_failure_messages.append("Import data config file at %s loaded, but is malformed (deps/dest_files not found or is empty)." % [import_path])
+				add_error_msg("Import data config file loaded, but deps/dest_files not found or is empty.", import_path)
 				return
 	else:
-		var file = FileAccess.open(path, FileAccess.READ)
-		if file:
-			size = file.get_length()
+		var this_size: int = FileAccess.get_size(path)
+		if this_size > -1:
+			size = this_size
 			n_files_scanned += 1
 		else:
-			scan_failure_messages.append("Unable to read file at %s ... error %s" % [path, FileAccess.get_open_error()])
-			return
+			# fallback to open->get_length if get_size fails
+			var file = FileAccess.open(path, FileAccess.READ)
+			if file:
+				size = file.get_length()
+				n_files_scanned += 1
+			else:
+				var file_open_error: Error = FileAccess.get_open_error()
+				add_error_msg("Unable to open or read file ... error %s" % file_open_error, path)
+				return
 			
 	total_bytes += size
 	
 	file_sizes[node_friendly_name] = size
-	
-	var added = false
-	for i in range(filesize_order.size()):
-		var this_item = filesize_order[i]
-		var this_size = file_sizes[this_item]
-		
-		if size > this_size:
-			filesize_order.insert(i, node_friendly_name)
-			added = true
-			break
+	file_meta[node_friendly_name] = [name, path]
+	filesize_order.append(node_friendly_name)
 
-	if not added:
-		filesize_order.append(node_friendly_name)
-				
-	var list_item = list.get_node("Item").duplicate()
-	
-	list.add_child(list_item)
-	list_item.name = node_friendly_name
-	list_item.get_node("Label/FileName").text = name
-	list_item.tooltip_text = path
-
-func _scan_directory(path: String, dir: DirAccess) -> void:
-	if dir == null: dir = DirAccess.open(path)
-	else: dir.change_dir(path)
-
-	if not dir:
-		scan_failure_messages.append("Could not open directory at %s ... error %s" % [path, DirAccess.get_open_error()])
-		return
-	
-	for file in dir.get_files():
+func _scan_directory(path: String) -> void:
+	for file in DirAccess.get_files_at(path):
 		if file.begins_with(".") or file.ends_with(".import"): continue
 		_scan_file(file, path + file)
-	for directory in dir.get_directories():
+	for directory in DirAccess.get_directories_at(path):
 		if directory.begins_with("."): continue
-		_scan_directory(path + directory + "/", dir)
+		_scan_directory(path + directory + "/")
 	n_folders_scanned += 1
 
 func _scan():
@@ -196,8 +191,10 @@ func _scan():
 	total_bytes = 0
 	total_other = 0
 	file_sizes = {}
+	file_meta = {}
 	filesize_order = []
-	scan_failure_messages = []
+	scan_errors = {}
+	num_errors = 0
 
 	var folder_path = ProjectSettings.globalize_path("res://")
 
@@ -210,10 +207,20 @@ func _scan():
 	delay_timer.start()
 	await delay_timer.timeout
 	
-	_scan_directory(folder_path, null)
+	_scan_directory(folder_path)
 	
+	filesize_order.sort_custom(func(a, b): return file_sizes[a] > file_sizes[b])
+	
+	var template: Node = list.get_node("Item")
 	for id in filesize_order:
-		var position = filesize_order.find(id)
+		var list_item = template.duplicate()
+		list.add_child(list_item)
+		list_item.name = str(id)
+		list_item.get_node("Label/FileName").text = file_meta[id][0]
+		list_item.tooltip_text = file_meta[id][1]
+	
+	var position = 0
+	for id in filesize_order:
 		var size = file_sizes[id]
 		var percent = snapped((float(size) / float(total_bytes)) * 100, 0.1)
 		var item = list.get_node(str(id))
@@ -221,6 +228,7 @@ func _scan():
 		if not is_instance_valid(item): continue
 		if (percent >= 0.1 or not group_small_files) and size > 0:
 			list.move_child(item, position)
+			position += 1
 			
 			var file_size_label = item.get_node("Label/FileSize")
 			var percent_label = item.get_node("Label/Percent")
@@ -258,20 +266,19 @@ func _scan():
 	rescan_button.disabled = false
 	scan_label.visible = false
 	
-	var n_errors: int = len(scan_failure_messages)
-	errors_button.visible = n_errors > 0
+	errors_button.visible = num_errors > 0
 	if errors_button.visible and auto_show_errors: _open_errors_window()
 	
 	print("GodotSize: Scanned %d files in %d directories. Took %.2f seconds, with %d error(s)%s" % [
 		n_files_scanned, n_folders_scanned, (Time.get_ticks_msec() - initial_time) / 1000.0,
-		n_errors, "  ... see error log in size map window." if n_errors > 0 else "!"
+		num_errors, " ... see error log in size map window." if num_errors > 0 else "!"
 	])
 
 
 ########## Options window
 
 func _open_options_window() -> void:
-	if is_instance_valid(options_window): 
+	if is_instance_valid(options_window):
 		options_window.show()
 		return
 
@@ -349,10 +356,14 @@ func _open_errors_window() -> void:
 func _show_errors() -> void:
 	var full_message = ""
 	
-	var n = 0
-	for message in scan_failure_messages:
-		n += 1
-		full_message += "	%d: %s\n" % [n, message]
+	for message in scan_errors.keys():
+		var msg_header: String = message
+		full_message += msg_header
+		print("GodotSize error: %s" % msg_header)
+		for filepath in scan_errors[message]:
+			var file_item: String = '\t- %s' % filepath
+			full_message += "\n%s" % file_item
+			print(file_item)
 	
 	errors_window.get_node("Background/Main/Log").text = full_message
-	errors_window.get_node("Background/Main/TitleLabel").text = "Encountered %d error(s) while scanning:" % [n]
+	errors_window.get_node("Background/Main/TitleLabel").text = "Encountered %d error(s) while scanning:" % [num_errors]
